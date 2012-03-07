@@ -51,6 +51,20 @@ class TestD20Coin(unittest.TestCase):
         self.assertEqual(treasure.name, "coin")
         self.assertEqual(treasure.description, "1pp 2gp 3sp 4cp")
 
+    def test_parse_coins(self):
+	"""Verify basic coin amount parsing"""
+
+	c = D20Coin.parse_coin("10gp")
+	self.assertEqual(c.value, D20Coin(gp=10).value)
+	c = D20Coin.parse_coin("10gp 10sp, 100,000cp")
+	self.assertEqual(c.value, D20Coin(gp=10, sp=10, cp=100000).value)
+
+    def test_parse_fractional_coins(self):
+	"""Test fractional coin parsing"""
+
+	c = D20Coin.parse_coin("10.5gp")
+	self.assertEqual(c.value, D20Coin(gp=10, sp=5).value)
+
 class TestRoller(unittest.TestCase):
     """A test suite for the Roller class"""
 

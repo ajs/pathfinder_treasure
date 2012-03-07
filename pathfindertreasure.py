@@ -9,6 +9,15 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+class TreasureError(Exception):
+    """Exceptions for the D20Treasure classes"""
+
+    def __init__(self, value):
+	self.value = value
+
+    def __str__(self):
+	return repr(self.value)
+
 class D20Treasure(object):
     def __init__(self, value, sale_value, name, description):
         self.value = value
@@ -103,6 +112,52 @@ class D20Coin(D20Treasure):
 
     def mergeable(self):
         return True
+
+    COIN_RE = re.compile(r'\s*([\d,]+(?:\.\d+)?)\s*([pgsc])p\b\s*,?',
+	re.IGNORECASE)
+
+    @staticmethod
+    def parse_coin(coin_string):
+	"""
+	Return a D20Coin object that represents the given coin description
+	A coin description takes the following form:
+
+	    (<ammount> <unit>)*
+	    ammount: <digit>+ {with optional commas}
+	    unit: ( pp | gp | sp | cp ) {with optional trailing comma}
+
+	For example:
+	10gp 3 cp 4sp
+	"""
+
+	order = ['p', 'g', 's', 'c']
+	total = dict(zip(order, (0,0,0,0)))
+	value = dict(zip(order, (1000,100,10,1)))
+	while True:
+	    if coin_string.strip() == "":
+		break
+	    m = D20Coin.COIN_RE.match(coin_string)
+	    if m is not None:
+		ammount = m.group(1).replace(',','')
+		unit = m.group(2).lower()
+		coin_string = coin_string[m.end():]
+		if float(int(float(ammount))) != float(ammount):
+		    found = False
+		    left = float(ammount) * float(value[unit])
+		    for cointype in order:
+			if cointype == unit:
+			    found = True
+			fracamt = int(left / float(value[cointype]))
+			if found and fracamt > 0:
+			    total[cointype] += fracamt
+			    left -= fracamt * float(value[cointype])
+		else:
+		    total[unit] += int(ammount)
+	    else:
+		raise TreasureError("Cannot parse coin value at: '%s'" %
+		    coin_string)
+	return D20Coin(pp=total['p'], gp=total['g'], sp=total['s'],
+	    cp=total['c'])
 
 class D20Weapon(D20Treasure):
     def __init__(self, name, weapon_type, weapon_data):
